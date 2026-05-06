@@ -8,6 +8,9 @@ import LogSale from './pages/LogSale'
 import Expenses from './pages/Expenses'
 import History from './pages/History'
 import Reports from './pages/Reports'
+import Diary from './pages/Diary'
+import AppointmentNew from './pages/AppointmentNew'
+import AppointmentDetail from './pages/AppointmentDetail'
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,6 +27,9 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
+          <Route path="/diary" element={<ProtectedLayout><Diary /></ProtectedLayout>} />
+          <Route path="/appointments/new" element={<ProtectedLayout><AppointmentNew /></ProtectedLayout>} />
+          <Route path="/appointments/:id" element={<ProtectedLayout><AppointmentDetail /></ProtectedLayout>} />
           <Route path="/log" element={<ProtectedLayout><LogSale /></ProtectedLayout>} />
           <Route path="/expenses" element={<ProtectedLayout><Expenses /></ProtectedLayout>} />
           <Route path="/history" element={<ProtectedLayout><History /></ProtectedLayout>} />

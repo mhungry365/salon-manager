@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
-import { TrendingUp, DollarSign, Banknote, CreditCard, Sparkles, TrendingDown } from 'lucide-react'
+import { TrendingUp, DollarSign, Banknote, CreditCard, Sparkles, TrendingDown, CalendarDays } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { RevenueEntry, ExpenseEntry } from '../types'
-import { PAYMENT_LABELS, PAYMENT_COLORS, SOURCE_LABELS, SOURCE_COLORS } from '../types'
-import { startOfDay, startOfWeek, startOfMonth, startOfYear, format, parseISO } from '../utils/dates'
+import type { RevenueEntry, ExpenseEntry, Appointment } from '../types'
+import { PAYMENT_LABELS, PAYMENT_COLORS, SOURCE_LABELS, SOURCE_COLORS, STATUS_COLORS, STATUS_LABELS } from '../types'
+import { startOfDay, startOfWeek, startOfMonth, startOfYear, format, parseISO, today } from '../utils/dates'
 
 type Period = 'today' | 'week' | 'month' | 'year'
 
@@ -36,9 +37,11 @@ const PERIODS: { key: Period; label: string }[] = [
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [period, setPeriod] = useState<Period>('today')
   const [revenue, setRevenue] = useState<RevenueEntry[]>([])
   const [expenses, setExpenses] = useState<ExpenseEntry[]>([])
+  const [todayAppts, setTodayAppts] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -53,10 +56,13 @@ export default function Dashboard() {
         year: startOfYear(now),
       }
       const from = starts[period]
-      const [{ data: rev }, { data: exp }] = await Promise.all([
+      const todayDate = today()
+      const [{ data: rev }, { data: exp }, { data: appts }] = await Promise.all([
         supabase.from('revenue_entries').select('*').eq('user_id', user.id).gte('date', from).order('date', { ascending: false }),
         supabase.from('expense_entries').select('*').eq('user_id', user.id).gte('date', from),
+        supabase.from('appointments').select('*').eq('user_id', user.id).eq('date', todayDate).order('time'),
       ])
+      setTodayAppts((appts as Appointment[]) || [])
       setRevenue((rev as RevenueEntry[]) || [])
       setExpenses((exp as ExpenseEntry[]) || [])
       setLoading(false)
@@ -214,6 +220,42 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Today's appointments */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                <CalendarDays size={18} className="text-pink-500" /> Today's Appointments
+              </h2>
+              <button onClick={() => navigate('/diary')} className="text-xs text-pink-500 hover:text-pink-600 font-medium">View diary →</button>
+            </div>
+            {todayAppts.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-6">No appointments today</p>
+            ) : (
+              <div className="space-y-2">
+                {todayAppts.map(a => {
+                  const [h, m] = a.time.split(':')
+                  const hour = Number(h)
+                  const timeStr = `${hour % 12 || 12}:${m}${hour >= 12 ? 'pm' : 'am'}`
+                  return (
+                    <button key={a.id} onClick={() => navigate(`/appointments/${a.id}`)}
+                      className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100 text-left">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-gray-500 w-14 shrink-0">{timeStr}</span>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{a.client_name}</p>
+                          <p className="text-xs text-gray-500">{a.service}{a.staff ? ` · ${a.staff}` : ''}</p>
+                        </div>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[a.status] || STATUS_COLORS.upcoming}`}>
+                        {STATUS_LABELS[a.status] || a.status}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>

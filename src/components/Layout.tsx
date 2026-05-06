@@ -1,9 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, Receipt, History, BarChart3, LogOut, Scissors } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Receipt, History, BarChart3, LogOut, Scissors, CalendarDays } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { to: '/diary', label: 'Diary', icon: CalendarDays },
   { to: '/log', label: 'Log Sale', icon: PlusCircle },
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/history', label: 'History', icon: History },
