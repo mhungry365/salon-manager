@@ -16,6 +16,8 @@ import AppointmentNew from './pages/AppointmentNew'
 import AppointmentDetail from './pages/AppointmentDetail'
 import StaffManagement from './pages/StaffManagement'
 import Settings from './pages/Settings'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -34,6 +36,8 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/staff/invite" element={<StaffInvite />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
             <Route path="/diary" element={<ProtectedLayout><Diary /></ProtectedLayout>} />
             <Route path="/appointments/new" element={<ProtectedLayout><AppointmentNew /></ProtectedLayout>} />
