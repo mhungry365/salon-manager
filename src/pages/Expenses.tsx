@@ -3,11 +3,13 @@ import type { FormEvent } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useSalon } from '../contexts/SalonContext'
 import { EXPENSE_CATEGORIES } from '../types'
 import { today } from '../utils/dates'
 
 export default function Expenses() {
   const { user } = useAuth()
+  const { salon } = useSalon()
   const [date, setDate] = useState(today())
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0])
   const [description, setDescription] = useState('')
@@ -20,13 +22,14 @@ export default function Expenses() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || !salon) return
     setLoading(true); setError('')
     const { error: err } = await supabase.from('expense_entries').insert({
       date, category, description, amount: Number(amount) || 0,
-      ref: ref || null, notes: notes || null, user_id: user.id,
+      ref: ref || null, notes: notes || null,
+      user_id: user.id, salon_id: salon.id,
     })
-    if (err) { setError(err.message) }
+    if (err) setError(err.message)
     else {
       setSuccess(true)
       setDescription(''); setAmount(''); setRef(''); setNotes('')
@@ -38,7 +41,6 @@ export default function Expenses() {
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Log an Expense</h1>
-
       {success && (
         <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4">
           <CheckCircle size={18} /> Expense saved successfully!
@@ -61,13 +63,11 @@ export default function Expenses() {
             </select>
           </div>
         </div>
-
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
           <input type="text" required value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Shampoo order"
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
         </div>
-
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Amount (€)</label>
@@ -80,13 +80,11 @@ export default function Expenses() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
           </div>
         </div>
-
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes" rows={2}
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none" />
         </div>
-
         <button type="submit" disabled={loading}
           className="w-full bg-pink-500 hover:bg-pink-600 disabled:opacity-60 text-white font-medium py-3 rounded-lg transition-colors">
           {loading ? 'Saving…' : 'Save Expense'}

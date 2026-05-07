@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Trash2, CheckCircle, ExternalLink } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useSalon } from '../contexts/SalonContext'
 import type { Appointment } from '../types'
 import {
   STATUS_LABELS, APPOINTMENT_STATUSES, DURATION_OPTIONS,
@@ -34,6 +35,7 @@ function formatDuration(d: number) {
 export default function AppointmentDetail() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
+  const { salon } = useSalon()
   const navigate = useNavigate()
 
   const [appt, setAppt] = useState<Appointment | null>(null)
@@ -63,8 +65,8 @@ export default function AppointmentDetail() {
 
   useEffect(() => {
     const load = async () => {
-      if (!id || !user) return
-      const { data } = await supabase.from('appointments').select('*').eq('id', id).eq('user_id', user.id).single()
+      if (!id || !salon) return
+      const { data } = await supabase.from('appointments').select('*').eq('id', id).eq('salon_id', salon.id).single()
       if (data) {
         const a = data as Appointment
         setAppt(a)
@@ -77,7 +79,7 @@ export default function AppointmentDetail() {
       setLoading(false)
     }
     load()
-  }, [id, user])
+  }, [id, salon])
 
   const save = async () => {
     if (!id) return
@@ -103,7 +105,7 @@ export default function AppointmentDetail() {
   }
 
   const handleConvert = async () => {
-    if (!id || !user || !appt) return
+    if (!id || !user || !appt || !salon) return
     setConverting(true); setError('')
     const { data: rev, error: revErr } = await supabase.from('revenue_entries').insert({
       date: appt.date,
@@ -116,6 +118,7 @@ export default function AppointmentDetail() {
       staff: appt.staff || null,
       notes: `Converted from appointment: ${appt.client_name}`,
       user_id: user.id,
+      salon_id: salon.id,
     }).select().single()
     if (revErr) { setError(revErr.message); setConverting(false); return }
     await supabase.from('appointments').update({ revenue_entry_id: (rev as any).id, status: 'completed' }).eq('id', id)

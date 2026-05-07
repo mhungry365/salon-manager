@@ -1,3 +1,25 @@
+export interface Salon {
+  id: string
+  created_at: string
+  name: string
+  email: string
+  phone: string | null
+  address: string | null
+  status: string // 'pending' | 'active' | 'suspended'
+  owner_id: string
+}
+
+export interface SalonUser {
+  id: string
+  created_at: string
+  salon_id: string
+  user_id: string
+  role: string // 'owner' | 'manager' | 'staff'
+  status: string // 'pending' | 'active' | 'suspended'
+  full_name: string | null
+  email: string | null
+}
+
 export interface RevenueEntry {
   id: string
   created_at: string
@@ -11,6 +33,7 @@ export interface RevenueEntry {
   staff: string | null
   notes: string | null
   user_id: string
+  salon_id: string | null
 }
 
 export interface ExpenseEntry {
@@ -23,6 +46,25 @@ export interface ExpenseEntry {
   ref: string | null
   notes: string | null
   user_id: string
+  salon_id: string | null
+}
+
+export interface Appointment {
+  id: string
+  created_at: string
+  date: string
+  time: string
+  duration: number
+  client_name: string
+  client_phone: string | null
+  service: string
+  source: string
+  staff: string | null
+  status: string
+  notes: string | null
+  revenue_entry_id: string | null
+  user_id: string
+  salon_id: string | null
 }
 
 export type PaymentMethod = 'cash' | 'revolut' | 'tw_prepaid' | 'tw_card'
@@ -54,23 +96,6 @@ export const SOURCE_COLORS: Record<string, string> = {
   phone: '#2563eb',
 }
 
-export interface Appointment {
-  id: string
-  created_at: string
-  date: string
-  time: string
-  duration: number
-  client_name: string
-  client_phone: string | null
-  service: string
-  source: string
-  staff: string | null
-  status: string
-  notes: string | null
-  revenue_entry_id: string | null
-  user_id: string
-}
-
 export const APPOINTMENT_STATUSES = ['upcoming', 'completed', 'no_show', 'cancelled'] as const
 export type AppointmentStatus = typeof APPOINTMENT_STATUSES[number]
 
@@ -99,3 +124,9 @@ export const EXPENSE_CATEGORIES = [
   'marketing',
   'other',
 ]
+
+export const ROLE_LABELS: Record<string, string> = {
+  owner: 'Owner',
+  manager: 'Manager',
+  staff: 'Staff',
+}

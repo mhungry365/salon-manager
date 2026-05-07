@@ -3,15 +3,12 @@ import type { FormEvent } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { } from '../types'
+import { useSalon } from '../contexts/SalonContext'
 import { today } from '../utils/dates'
 
 type Source = 'walkin' | 'treatwell' | 'phone'
 type Payment = 'cash' | 'revolut' | 'tw_prepaid' | 'tw_card'
-
-interface DailySummary {
-  cash: number; revolut: number; tw_prepaid: number; tw_card: number; count: number
-}
+interface DailySummary { cash: number; revolut: number; tw_prepaid: number; tw_card: number; count: number }
 
 const SOURCES: { key: Source; label: string; color: string }[] = [
   { key: 'walkin', label: 'Walk-in', color: 'border-teal-500 bg-teal-50 text-teal-700' },
@@ -28,6 +25,7 @@ const PAYMENTS: { key: Payment; label: string; desc: string; active: string }[] 
 
 export default function LogSale() {
   const { user } = useAuth()
+  const { salon, salonUser } = useSalon()
   const [source, setSource] = useState<Source>('walkin')
   const [payment, setPayment] = useState<Payment>('cash')
   const [date, setDate] = useState(today())
@@ -35,43 +33,42 @@ export default function LogSale() {
   const [amount, setAmount] = useState('')
   const [tip, setTip] = useState('')
   const [tipPayment, setTipPayment] = useState<'cash' | 'revolut'>('cash')
-  const [staff, setStaff] = useState('')
+  const [staff, setStaff] = useState(salonUser?.full_name || '')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [summary, setSummary] = useState<DailySummary>({ cash: 0, revolut: 0, tw_prepaid: 0, tw_card: 0, count: 0 })
 
   const loadSummary = async () => {
-    if (!user) return
+    if (!salon) return
     const { data } = await supabase
       .from('revenue_entries')
       .select('payment, amount, tip')
-      .eq('user_id', user.id)
+      .eq('salon_id', salon.id)
       .eq('date', today())
     if (!data) return
     const s: DailySummary = { cash: 0, revolut: 0, tw_prepaid: 0, tw_card: 0, count: data.length }
-    data.forEach((r: any) => {
-      s[r.payment as keyof Omit<DailySummary, 'count'>] += Number(r.amount) + Number(r.tip || 0)
-    })
+    data.forEach((r: any) => { s[r.payment as keyof Omit<DailySummary, 'count'>] += Number(r.amount) + Number(r.tip || 0) })
     setSummary(s)
   }
 
-  useEffect(() => { loadSummary() }, [user])
+  useEffect(() => { loadSummary() }, [salon])
 
   const total = (Number(amount) || 0) + (Number(tip) || 0)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || !salon) return
     setLoading(true)
     const { error } = await supabase.from('revenue_entries').insert({
       date, source, service, amount: Number(amount), tip: Number(tip) || 0,
       tip_payment: Number(tip) > 0 ? tipPayment : null,
-      payment, staff: staff || null, notes: notes || null, user_id: user.id,
+      payment, staff: staff || null, notes: notes || null,
+      user_id: user.id, salon_id: salon.id,
     })
     if (!error) {
       setSuccess(true)
-      setService(''); setAmount(''); setTip(''); setStaff(''); setNotes('')
+      setService(''); setAmount(''); setTip(''); setNotes('')
       loadSummary()
       setTimeout(() => setSuccess(false), 3000)
     }
@@ -89,36 +86,24 @@ export default function LogSale() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Booking Source */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Booking Source</label>
           <div className="flex gap-2">
             {SOURCES.map(s => (
-              <button
-                key={s.key} type="button"
-                onClick={() => setSource(s.key)}
-                className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium transition-colors ${
-                  source === s.key ? s.color : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                }`}
-              >
+              <button key={s.key} type="button" onClick={() => setSource(s.key)}
+                className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium transition-colors ${source === s.key ? s.color : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
                 {s.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Payment Method */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
           <div className="grid grid-cols-2 gap-2">
             {PAYMENTS.map(p => (
-              <button
-                key={p.key} type="button"
-                onClick={() => setPayment(p.key)}
-                className={`p-3 rounded-lg border-2 text-left transition-colors ${
-                  payment === p.key ? p.active : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
+              <button key={p.key} type="button" onClick={() => setPayment(p.key)}
+                className={`p-3 rounded-lg border-2 text-left transition-colors ${payment === p.key ? p.active : 'border-gray-200 hover:border-gray-300'}`}>
                 <p className="text-sm font-semibold text-gray-800">{p.label}</p>
                 <p className="text-xs text-gray-500">{p.desc}</p>
               </button>
@@ -131,7 +116,6 @@ export default function LogSale() {
           )}
         </div>
 
-        {/* Date & Service */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
@@ -145,7 +129,6 @@ export default function LogSale() {
           </div>
         </div>
 
-        {/* Amount & Tip */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Amount (€)</label>
@@ -165,10 +148,7 @@ export default function LogSale() {
             <div className="flex gap-2">
               {(['cash', 'revolut'] as const).map(t => (
                 <button key={t} type="button" onClick={() => setTipPayment(t)}
-                  className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium capitalize transition-colors ${
-                    tipPayment === t ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-600'
-                  }`}
-                >
+                  className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium capitalize transition-colors ${tipPayment === t ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-600'}`}>
                   {t}
                 </button>
               ))}
@@ -176,7 +156,6 @@ export default function LogSale() {
           </div>
         )}
 
-        {/* Live total */}
         {total > 0 && (
           <div className="bg-gray-50 rounded-lg px-4 py-3 flex justify-between items-center">
             <span className="text-sm text-gray-600">Running total</span>
@@ -184,7 +163,6 @@ export default function LogSale() {
           </div>
         )}
 
-        {/* Staff & Notes */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Staff</label>
@@ -204,7 +182,6 @@ export default function LogSale() {
         </button>
       </form>
 
-      {/* Today so far */}
       <div className="mt-8 bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="font-semibold text-gray-800 mb-3">Today so far</h2>
         <div className="grid grid-cols-2 gap-2">

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useSalon } from '../contexts/SalonContext'
 import { DURATION_OPTIONS } from '../types'
 import { today } from '../utils/dates'
 
@@ -14,6 +15,7 @@ const SOURCES = [
 
 export default function AppointmentNew() {
   const { user } = useAuth()
+  const { salon, salonUser } = useSalon()
   const navigate = useNavigate()
   const [params] = useSearchParams()
 
@@ -24,14 +26,14 @@ export default function AppointmentNew() {
   const [clientPhone, setClientPhone] = useState('')
   const [service, setService] = useState('')
   const [source, setSource] = useState('walkin')
-  const [staff, setStaff] = useState('')
+  const [staff, setStaff] = useState(salonUser?.full_name || '')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || !salon) return
     setLoading(true); setError('')
     const { error: err } = await supabase.from('appointments').insert({
       date, time, duration,
@@ -42,6 +44,7 @@ export default function AppointmentNew() {
       notes: notes || null,
       status: 'upcoming',
       user_id: user.id,
+      salon_id: salon.id,
     })
     if (err) { setError(err.message); setLoading(false); return }
     navigate(`/diary?date=${date}`)

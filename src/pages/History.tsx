@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Trash2, Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
+import { useSalon } from '../contexts/SalonContext'
 import type { RevenueEntry } from '../types'
 import { PAYMENT_LABELS, SOURCE_LABELS } from '../types'
 import { startOfMonth, today, format, parseISO } from '../utils/dates'
 
 export default function History() {
-  const { user } = useAuth()
+  const { salon } = useSalon()
   const [entries, setEntries] = useState<RevenueEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [from, setFrom] = useState(startOfMonth(new Date()))
@@ -16,15 +16,15 @@ export default function History() {
   const [filterSource, setFilterSource] = useState('')
 
   const load = useCallback(async () => {
-    if (!user) return
+    if (!salon) return
     setLoading(true)
-    let q = supabase.from('revenue_entries').select('*').eq('user_id', user.id).gte('date', from).lte('date', to).order('date', { ascending: false })
+    let q = supabase.from('revenue_entries').select('*').eq('salon_id', salon.id).gte('date', from).lte('date', to).order('date', { ascending: false })
     if (filterPayment) q = q.eq('payment', filterPayment)
     if (filterSource) q = q.eq('source', filterSource)
     const { data } = await q
     setEntries((data as RevenueEntry[]) || [])
     setLoading(false)
-  }, [user, from, to, filterPayment, filterSource])
+  }, [salon, from, to, filterPayment, filterSource])
 
   useEffect(() => { load() }, [load])
 
@@ -60,7 +60,6 @@ export default function History() {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <label className="text-xs font-medium text-gray-600">From</label>
@@ -84,7 +83,6 @@ export default function History() {
         </select>
       </div>
 
-      {/* Summary row */}
       {entries.length > 0 && (
         <div className="flex gap-4 mb-4 text-sm">
           <span className="text-gray-600"><strong className="text-gray-900">{entries.length}</strong> entries</span>
@@ -98,7 +96,7 @@ export default function History() {
         {loading ? (
           <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500" /></div>
         ) : entries.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-16">No entries found for the selected filters</p>
+          <p className="text-gray-400 text-sm text-center py-16">No entries found</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -114,34 +112,13 @@ export default function History() {
                   <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{format(parseISO(e.date))}</td>
                     <td className="px-4 py-3 text-gray-900 font-medium">{e.service}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                        e.source === 'walkin' ? 'bg-teal-100 text-teal-700' :
-                        e.source === 'treatwell' ? 'bg-purple-100 text-purple-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {SOURCE_LABELS[e.source] || e.source}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                        e.payment === 'cash' ? 'bg-green-100 text-green-700' :
-                        e.payment === 'revolut' ? 'bg-purple-100 text-purple-700' :
-                        e.payment === 'tw_prepaid' ? 'bg-blue-100 text-blue-700' :
-                        'bg-pink-100 text-pink-700'
-                      }`}>
-                        {PAYMENT_LABELS[e.payment] || e.payment}
-                      </span>
-                    </td>
+                    <td className="px-4 py-3"><span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${e.source === 'walkin' ? 'bg-teal-100 text-teal-700' : e.source === 'treatwell' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{SOURCE_LABELS[e.source] || e.source}</span></td>
+                    <td className="px-4 py-3"><span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${e.payment === 'cash' ? 'bg-green-100 text-green-700' : e.payment === 'revolut' ? 'bg-purple-100 text-purple-700' : e.payment === 'tw_prepaid' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>{PAYMENT_LABELS[e.payment] || e.payment}</span></td>
                     <td className="px-4 py-3 text-gray-600">{e.staff || '—'}</td>
                     <td className="px-4 py-3 text-gray-900 font-medium">€{Number(e.amount).toFixed(2)}</td>
                     <td className="px-4 py-3 text-yellow-600">{Number(e.tip) > 0 ? `€${Number(e.tip).toFixed(2)}` : '—'}</td>
                     <td className="px-4 py-3 text-gray-900 font-semibold">€{(Number(e.amount) + Number(e.tip || 0)).toFixed(2)}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => deleteEntry(e.id)} className="text-red-400 hover:text-red-600 transition-colors">
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
+                    <td className="px-4 py-3"><button onClick={() => deleteEntry(e.id)} className="text-red-400 hover:text-red-600 transition-colors"><Trash2 size={16} /></button></td>
                   </tr>
                 ))}
               </tbody>

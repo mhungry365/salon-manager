@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Scissors } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -8,7 +8,6 @@ import { useAuth } from '../contexts/AuthContext'
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -23,13 +22,8 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password })
-        if (error) throw error
-      }
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email, password })
+      if (authErr) throw authErr
       navigate('/', { replace: true })
     } catch (err: any) {
       setError(err.message)
@@ -46,55 +40,39 @@ export default function Login() {
             <Scissors className="text-pink-500" size={24} />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">SalonManager</h1>
-          <p className="text-gray-500 text-sm mt-1">Daily sales management</p>
-        </div>
-
-        <div className="flex rounded-lg bg-gray-100 p-1 mb-6">
-          {(['login', 'signup'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => { setMode(m); setError('') }}
-              className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                mode === m ? 'bg-white shadow text-gray-900' : 'text-gray-500'
-              }`}
-            >
-              {m === 'login' ? 'Sign In' : 'Sign Up'}
-            </button>
-          ))}
+          <p className="text-gray-500 text-sm mt-1">Sign in to your salon</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+            <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="you@example.com"
-            />
+              placeholder="you@example.com" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={e => setPassword(e.target.value)}
+            <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="••••••••"
-            />
+              placeholder="••••••••" />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-pink-500 hover:bg-pink-600 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg transition-colors text-sm"
-          >
-            {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : 'Create Account'}
+          <button type="submit" disabled={loading}
+            className="w-full bg-pink-500 hover:bg-pink-600 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg transition-colors text-sm">
+            {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+
+        <div className="mt-6 space-y-2 text-center text-sm">
+          <p className="text-gray-500">
+            New salon?{' '}
+            <Link to="/register" className="text-pink-500 hover:text-pink-600 font-medium">Register here</Link>
+          </p>
+          <p className="text-gray-500">
+            Staff member?{' '}
+            <Link to="/staff/invite" className="text-pink-500 hover:text-pink-600 font-medium">Join with invite code</Link>
+          </p>
+        </div>
       </div>
     </div>
   )
