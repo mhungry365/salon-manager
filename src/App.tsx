@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 import { AuthProvider } from './contexts/AuthContext'
 import { SalonProvider } from './contexts/SalonContext'
 import AuthGuard from './components/AuthGuard'
@@ -16,6 +18,8 @@ import AppointmentNew from './pages/AppointmentNew'
 import AppointmentDetail from './pages/AppointmentDetail'
 import StaffManagement from './pages/StaffManagement'
 import Settings from './pages/Settings'
+import Clients from './pages/Clients'
+import Services from './pages/Services'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 
@@ -27,10 +31,18 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   )
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 1000 * 60 * 5, retry: 1 },
+  },
+})
+
 export default function App() {
   return (
-    <AuthProvider>
-      <SalonProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <SalonProvider>
+        <Toaster position="top-center" richColors />
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -47,11 +59,14 @@ export default function App() {
             <Route path="/history" element={<ProtectedLayout><History /></ProtectedLayout>} />
             <Route path="/reports" element={<ProtectedLayout><Reports /></ProtectedLayout>} />
             <Route path="/staff" element={<ProtectedLayout><StaffManagement /></ProtectedLayout>} />
+            <Route path="/clients" element={<ProtectedLayout><Clients /></ProtectedLayout>} />
+            <Route path="/services" element={<ProtectedLayout><Services /></ProtectedLayout>} />
             <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </SalonProvider>
     </AuthProvider>
+  </QueryClientProvider>
   )
 }

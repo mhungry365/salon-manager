@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Trash2, CheckCircle, ExternalLink } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useSalon } from '../contexts/SalonContext'
-import type { Appointment } from '../types'
+import type { Appointment, Client, Service } from '../types'
 import {
   STATUS_LABELS, APPOINTMENT_STATUSES, DURATION_OPTIONS,
   PAYMENT_LABELS,
@@ -42,7 +43,6 @@ export default function AppointmentDetail() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   // edit state
   const [date, setDate] = useState('')
@@ -63,9 +63,16 @@ export default function AppointmentDetail() {
   const [convertPayment, setConvertPayment] = useState('cash')
   const [converting, setConverting] = useState(false)
 
+  const [clients, setClients] = useState<Client[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [clientId, setClientId] = useState<string | null>(null)
+  const [serviceId, setServiceId] = useState<string | null>(null)
+
   useEffect(() => {
     const load = async () => {
       if (!id || !salon) return
+      supabase.from('clients').select('*').eq('salon_id', salon.id).then(({ data }) => setClients(data || []))
+      supabase.from('services').select('*').eq('salon_id', salon.id).then(({ data }) => setServices(data || []))
       const { data } = await supabase.from('appointments').select('*').eq('id', id).eq('salon_id', salon.id).single()
       if (data) {
         const a = data as Appointment
@@ -75,11 +82,29 @@ export default function AppointmentDetail() {
         setService(a.service); setSource(a.source)
         setStaff(a.staff || ''); setNotes(a.notes || '')
         setStatus(a.status)
+        setClientId(a.client_id || null)
+        setServiceId(a.service_id || null)
       }
       setLoading(false)
     }
     load()
   }, [id, salon])
+
+  const handleClientSelect = (cid: string) => {
+    setClientId(cid || null)
+    if (cid) {
+      const c = clients.find(c => c.id === cid)
+      if (c) { setClientName(c.name); setClientPhone(c.phone || '') }
+    }
+  }
+
+  const handleServiceSelect = (sid: string) => {
+    setServiceId(sid || null)
+    if (sid) {
+      const s = services.find(s => s.id === sid)
+      if (s) { setService(s.name); setDuration(s.duration) }
+    }
+  }
 
   const save = async () => {
     if (!id) return
@@ -92,9 +117,11 @@ export default function AppointmentDetail() {
       staff: staff || null,
       notes: notes || null,
       status,
+      client_id: clientId,
+      service_id: serviceId,
     }).eq('id', id)
     if (err) setError(err.message)
-    else { setSuccess('Saved'); setAppt(a => a ? { ...a, date, time, duration, client_name: clientName, client_phone: clientPhone || null, service, source, staff: staff || null, notes: notes || null, status } : a); setTimeout(() => setSuccess(''), 2000) }
+    else { toast.success('Changes saved!'); setAppt(a => a ? { ...a, date, time, duration, client_name: clientName, client_phone: clientPhone || null, service, source, staff: staff || null, notes: notes || null, status, client_id: clientId, service_id: serviceId } : a); }
     setSaving(false)
   }
 
@@ -119,14 +146,15 @@ export default function AppointmentDetail() {
       notes: `Converted from appointment: ${appt.client_name}`,
       user_id: user.id,
       salon_id: salon.id,
+      client_id: appt.client_id || null,
+      service_id: appt.service_id || null,
     }).select().single()
     if (revErr) { setError(revErr.message); setConverting(false); return }
     await supabase.from('appointments').update({ revenue_entry_id: (rev as any).id, status: 'completed' }).eq('id', id)
     setAppt(a => a ? { ...a, revenue_entry_id: (rev as any).id, status: 'completed' } : a)
     setStatus('completed')
     setShowConvert(false)
-    setSuccess('Revenue entry created and appointment marked complete!')
-    setTimeout(() => setSuccess(''), 4000)
+    toast.success('Revenue entry created and appointment marked complete!')
     setConverting(false)
   }
 
@@ -146,11 +174,6 @@ export default function AppointmentDetail() {
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>}
-      {success && (
-        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4 text-sm">
-          <CheckCircle size={16} /> {success}
-        </div>
-      )}
 
       {/* Revenue linked badge */}
       {appt.revenue_entry_id && (
@@ -205,34 +228,50 @@ export default function AppointmentDetail() {
         </div>
 
         {/* Client */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
-            <input type="text" value={clientName} onChange={e => setClientName(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <input type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="Optional"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Select Client (Optional)</label>
+          <select value={clientId || ''} onChange={e => handleClientSelect(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white mb-3">
+            <option value="">-- New / Walk-in --</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>)}
+          </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+              <input type="text" value={clientName} onChange={e => setClientName(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="Optional"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+            </div>
           </div>
         </div>
 
         {/* Service & Source */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
-            <input type="text" value={service} onChange={e => setService(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
-            <select value={source} onChange={e => setSource(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white">
-              <option value="walkin">Walk-in</option>
-              <option value="treatwell">Treatwell</option>
-              <option value="phone">Phone</option>
-            </select>
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Select Service (Optional)</label>
+          <select value={serviceId || ''} onChange={e => handleServiceSelect(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white mb-3">
+            <option value="">-- Custom Service --</option>
+            {services.map(s => <option key={s.id} value={s.id}>{s.name} ({s.duration}m)</option>)}
+          </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Service Details</label>
+              <input type="text" value={service} onChange={e => setService(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
+              <select value={source} onChange={e => setSource(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white">
+                <option value="walkin">Walk-in</option>
+                <option value="treatwell">Treatwell</option>
+                <option value="phone">Phone</option>
+              </select>
+            </div>
           </div>
         </div>
 

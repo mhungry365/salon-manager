@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Trash2, Download } from 'lucide-react'
+import { Trash2, Download, FileText } from 'lucide-react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { supabase } from '../lib/supabase'
 import { useSalon } from '../contexts/SalonContext'
 import type { RevenueEntry } from '../types'
@@ -46,6 +48,36 @@ export default function History() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = `sales-${from}-${to}.csv`; a.click()
     URL.revokeObjectURL(url)
+    URL.revokeObjectURL(url)
+  }
+
+  const exportPDF = () => {
+    const doc = new jsPDF()
+    doc.setFontSize(16)
+    doc.text(`Sales History (${from} to ${to})`, 14, 15)
+    
+    doc.setFontSize(10)
+    doc.text(`Revenue: €${totalAmount.toFixed(2)} | Tips: €${totalTips.toFixed(2)} | Total: €${(totalAmount + totalTips).toFixed(2)}`, 14, 22)
+
+    const headers = [['Date', 'Service', 'Source', 'Payment', 'Staff', 'Amount', 'Tip', 'Total']]
+    const rows = entries.map(e => [
+      format(parseISO(e.date)), e.service, SOURCE_LABELS[e.source] || e.source,
+      PAYMENT_LABELS[e.payment] || e.payment, e.staff || '',
+      `€${Number(e.amount).toFixed(2)}`, 
+      Number(e.tip) > 0 ? `€${Number(e.tip).toFixed(2)}` : '-', 
+      `€${(Number(e.amount) + Number(e.tip || 0)).toFixed(2)}`,
+    ])
+
+    autoTable(doc, {
+      startY: 28,
+      head: headers,
+      body: rows,
+      theme: 'grid',
+      headStyles: { fillColor: [236, 72, 153] },
+      styles: { fontSize: 8 },
+    })
+
+    doc.save(`sales-${from}-${to}.pdf`)
   }
 
   const totalAmount = entries.reduce((s, e) => s + Number(e.amount), 0)
@@ -53,11 +85,16 @@ export default function History() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Sales History</h1>
-        <button onClick={exportCSV} className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-          <Download size={16} /> Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCSV} className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            <Download size={16} /> CSV
+          </button>
+          <button onClick={exportPDF} className="flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            <FileText size={16} /> PDF
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3">

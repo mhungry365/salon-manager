@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Download } from 'lucide-react'
+import { Download, FileText } from 'lucide-react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { supabase } from '../lib/supabase'
 import { useSalon } from '../contexts/SalonContext'
 import type { RevenueEntry, ExpenseEntry } from '../types'
@@ -99,13 +101,66 @@ export default function Reports() {
     URL.revokeObjectURL(url)
   }
 
+  const exportPDF = () => {
+    const doc = new jsPDF()
+    const pLabel = PERIODS.find(p2 => p2.key === period)?.label || ''
+    
+    doc.setFontSize(16)
+    doc.text(`Financial Report - ${pLabel}`, 14, 15)
+    
+    doc.setFontSize(12)
+    doc.text('Summary', 14, 25)
+    
+    autoTable(doc, {
+      startY: 28,
+      head: [['Metric', 'Amount']],
+      body: [
+        ['Gross Revenue', `€${totals.gross.toFixed(2)}`],
+        ['Total Expenses', `€${totals.exp.toFixed(2)}`],
+        ['Net Profit', `€${totals.net.toFixed(2)}`],
+        ['Tips', `€${totals.tips.toFixed(2)}`],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [236, 72, 153] },
+    })
+
+    const finalY1 = (doc as any).lastAutoTable.finalY || 28
+
+    doc.text('Payment Method Breakdown', 14, finalY1 + 10)
+    autoTable(doc, {
+      startY: finalY1 + 14,
+      head: [['Method', 'Count', 'Service €', 'Tips €', 'Total €', '% Share']],
+      body: paymentBreakdown.map(p => [p.label, p.count, p.service.toFixed(2), p.tips.toFixed(2), p.total.toFixed(2), p.pct + '%']),
+      theme: 'grid',
+      headStyles: { fillColor: [236, 72, 153] },
+    })
+
+    const finalY2 = (doc as any).lastAutoTable.finalY
+
+    doc.text('Booking Source Breakdown', 14, finalY2 + 10)
+    autoTable(doc, {
+      startY: finalY2 + 14,
+      head: [['Source', 'Count', 'Revenue']],
+      body: sourceBreakdown.map(s => [s.label, s.count, s.revenue.toFixed(2)]),
+      theme: 'grid',
+      headStyles: { fillColor: [236, 72, 153] },
+    })
+
+    doc.save(`report-${period}.pdf`)
+  }
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <button onClick={exportCSV} className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-          <Download size={16} /> Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCSV} className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            <Download size={16} /> CSV
+          </button>
+          <button onClick={exportPDF} className="flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            <FileText size={16} /> PDF
+          </button>
+        </div>
       </div>
       <div className="flex bg-gray-100 rounded-lg p-1 mb-6 gap-1 w-fit">
         {PERIODS.map(p => (

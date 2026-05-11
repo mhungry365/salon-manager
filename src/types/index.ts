@@ -20,6 +20,28 @@ export interface SalonUser {
   email: string | null
 }
 
+export interface Client {
+  id: string
+  created_at: string
+  salon_id: string
+  name: string
+  phone: string | null
+  email: string | null
+  notes: string | null
+  user_id: string
+}
+
+export interface Service {
+  id: string
+  created_at: string
+  salon_id: string
+  name: string
+  duration: number
+  price: number
+  category: string | null
+  user_id: string
+}
+
 export interface RevenueEntry {
   id: string
   created_at: string
@@ -34,6 +56,8 @@ export interface RevenueEntry {
   notes: string | null
   user_id: string
   salon_id: string | null
+  client_id: string | null
+  service_id: string | null
 }
 
 export interface ExpenseEntry {
@@ -65,6 +89,8 @@ export interface Appointment {
   revenue_entry_id: string | null
   user_id: string
   salon_id: string | null
+  client_id: string | null
+  service_id: string | null
 }
 
 export type PaymentMethod = 'cash' | 'revolut' | 'tw_prepaid' | 'tw_card'

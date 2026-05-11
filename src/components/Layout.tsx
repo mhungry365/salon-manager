@@ -1,5 +1,6 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, Receipt, History, BarChart3, LogOut, Scissors, CalendarDays, Users, Settings } from 'lucide-react'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { LayoutDashboard, PlusCircle, Receipt, History, BarChart3, LogOut, Scissors, CalendarDays, Users, Settings, Contact, ClipboardList } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { useSalon } from '../contexts/SalonContext'
 
@@ -7,6 +8,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { signOut } = useAuth()
   const { salon, role, canManage } = useSalon()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleSignOut = async () => {
     await signOut()
@@ -20,6 +22,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/expenses', label: 'Expenses', icon: Receipt, show: canManage },
     { to: '/history', label: 'History', icon: History, show: canManage },
     { to: '/reports', label: 'Reports', icon: BarChart3, show: canManage },
+    { to: '/clients', label: 'Clients', icon: Contact, show: true },
+    { to: '/services', label: 'Services', icon: ClipboardList, show: canManage },
     { to: '/staff', label: 'Staff', icon: Users, show: canManage },
     { to: '/settings', label: 'Settings', icon: Settings, show: role === 'owner' },
   ].filter(n => n.show)
@@ -87,10 +91,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Main content */}
-      <main className="flex-1 md:ml-60 pb-20 md:pb-0">
-        <div className="max-w-5xl mx-auto px-4 py-6">
-          {children}
-        </div>
+      <main className="flex-1 md:ml-60 pb-20 md:pb-0 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="max-w-5xl mx-auto px-4 py-6"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   )

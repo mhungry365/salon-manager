@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useSalon } from '../contexts/SalonContext'
+import type { Client, Service } from '../types'
 import { DURATION_OPTIONS } from '../types'
 import { today } from '../utils/dates'
 
@@ -31,6 +33,33 @@ export default function AppointmentNew() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const [clients, setClients] = useState<Client[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [clientId, setClientId] = useState<string | null>(null)
+  const [serviceId, setServiceId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!salon) return
+    supabase.from('clients').select('*').eq('salon_id', salon.id).then(({ data }) => setClients(data || []))
+    supabase.from('services').select('*').eq('salon_id', salon.id).then(({ data }) => setServices(data || []))
+  }, [salon])
+
+  const handleClientSelect = (id: string) => {
+    setClientId(id || null)
+    if (id) {
+      const c = clients.find(c => c.id === id)
+      if (c) { setClientName(c.name); setClientPhone(c.phone || '') }
+    }
+  }
+
+  const handleServiceSelect = (id: string) => {
+    setServiceId(id || null)
+    if (id) {
+      const s = services.find(s => s.id === id)
+      if (s) { setService(s.name); setDuration(s.duration) }
+    }
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!user || !salon) return
@@ -45,8 +74,11 @@ export default function AppointmentNew() {
       status: 'upcoming',
       user_id: user.id,
       salon_id: salon.id,
+      client_id: clientId,
+      service_id: serviceId,
     })
     if (err) { setError(err.message); setLoading(false); return }
+    toast.success('Appointment created successfully!')
     navigate(`/diary?date=${date}`)
   }
 
@@ -86,24 +118,41 @@ export default function AppointmentNew() {
         </div>
 
         {/* Client */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
-            <input type="text" required value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Full name"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
-            <input type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="+353..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Select Client (Optional)</label>
+          <select value={clientId || ''} onChange={e => handleClientSelect(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white mb-3">
+            <option value="">-- New / Walk-in --</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>)}
+          </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+              <input type="text" required value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Full name"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
+              <input type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="+353..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+            </div>
           </div>
         </div>
 
+
         {/* Service */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
-          <input type="text" required value={service} onChange={e => setService(e.target.value)} placeholder="e.g. Haircut & Colour"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Select Service (Optional)</label>
+          <select value={serviceId || ''} onChange={e => handleServiceSelect(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white mb-3">
+            <option value="">-- Custom Service --</option>
+            {services.map(s => <option key={s.id} value={s.id}>{s.name} ({s.duration}m)</option>)}
+          </select>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Service Details</label>
+            <input type="text" required value={service} onChange={e => setService(e.target.value)} placeholder="e.g. Haircut & Colour"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+          </div>
         </div>
 
         {/* Source */}

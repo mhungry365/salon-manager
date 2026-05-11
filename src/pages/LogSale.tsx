@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
-import { CheckCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useSalon } from '../contexts/SalonContext'
+import { useClients } from '../hooks/useClients'
+import { useServices } from '../hooks/useServices'
 import { today } from '../utils/dates'
 
 type Source = 'walkin' | 'treatwell' | 'phone'
@@ -36,8 +38,20 @@ export default function LogSale() {
   const [staff, setStaff] = useState(salonUser?.full_name || '')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [summary, setSummary] = useState<DailySummary>({ cash: 0, revolut: 0, tw_prepaid: 0, tw_card: 0, count: 0 })
+
+  const { clients } = useClients()
+  const { services } = useServices()
+  const [clientId, setClientId] = useState<string | null>(null)
+  const [serviceId, setServiceId] = useState<string | null>(null)
+
+  const handleServiceSelect = (id: string) => {
+    setServiceId(id || null)
+    if (id) {
+      const s = services.find(s => s.id === id)
+      if (s) { setService(s.name); setAmount(s.price.toString()) }
+    }
+  }
 
   const loadSummary = async () => {
     if (!salon) return
@@ -65,25 +79,23 @@ export default function LogSale() {
       tip_payment: Number(tip) > 0 ? tipPayment : null,
       payment, staff: staff || null, notes: notes || null,
       user_id: user.id, salon_id: salon.id,
+      client_id: clientId, service_id: serviceId,
     })
-    if (!error) {
-      setSuccess(true)
+    
+    setLoading(false)
+
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success('Sale saved successfully!')
       setService(''); setAmount(''); setTip(''); setNotes('')
       loadSummary()
-      setTimeout(() => setSuccess(false), 3000)
     }
-    setLoading(false)
   }
 
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Log a Sale</h1>
-
-      {success && (
-        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4">
-          <CheckCircle size={18} /> Sale saved successfully!
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
@@ -116,14 +128,34 @@ export default function LogSale() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input type="date" required value={date} onChange={e => setDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Select Client (Optional)</label>
+            <select value={clientId || ''} onChange={e => setClientId(e.target.value || null)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white">
+              <option value="">-- Walk-in / No Client --</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+          <input type="date" required value={date} onChange={e => setDate(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+        </div>
+
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Select Service (Optional)</label>
+            <select value={serviceId || ''} onChange={e => handleServiceSelect(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white">
+              <option value="">-- Custom Service --</option>
+              {services.map(s => <option key={s.id} value={s.id}>{s.name} (€{s.price})</option>)}
+            </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Service Name</label>
             <input type="text" required value={service} onChange={e => setService(e.target.value)} placeholder="e.g. Haircut"
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
           </div>

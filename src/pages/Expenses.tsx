@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { CheckCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useSalon } from '../contexts/SalonContext'
@@ -17,7 +17,6 @@ export default function Expenses() {
   const [ref, setRef] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: FormEvent) => {
@@ -31,9 +30,8 @@ export default function Expenses() {
     })
     if (err) setError(err.message)
     else {
-      setSuccess(true)
+      toast.success('Expense saved successfully!')
       setDescription(''); setAmount(''); setRef(''); setNotes('')
-      setTimeout(() => setSuccess(false), 3000)
     }
     setLoading(false)
   }
@@ -41,11 +39,6 @@ export default function Expenses() {
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Log an Expense</h1>
-      {success && (
-        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4">
-          <CheckCircle size={18} /> Expense saved successfully!
-        </div>
-      )}
       {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">

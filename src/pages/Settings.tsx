@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
-import { CheckCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
 import { useSalon } from '../contexts/SalonContext'
 
@@ -10,7 +10,6 @@ export default function Settings() {
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -32,8 +31,7 @@ export default function Settings() {
     if (err) setError(err.message)
     else {
       await refreshSalon()
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      toast.success('Settings saved.')
     }
     setLoading(false)
   }
@@ -41,12 +39,6 @@ export default function Settings() {
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Salon Settings</h1>
-
-      {success && (
-        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-4">
-          <CheckCircle size={18} /> Settings saved.
-        </div>
-      )}
       {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
@@ -78,7 +70,10 @@ export default function Settings() {
           <div className="flex items-center gap-2">
             <code className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono text-gray-800 break-all">{salon.id}</code>
             <button
-              onClick={() => navigator.clipboard.writeText(salon.id)}
+              onClick={() => {
+                navigator.clipboard.writeText(salon.id)
+                toast.success('Invite code copied!')
+              }}
               className="shrink-0 text-xs bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-2 rounded-lg transition-colors">
               Copy
             </button>
