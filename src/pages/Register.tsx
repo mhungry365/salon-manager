@@ -25,10 +25,10 @@ export default function Register() {
       const userId = authData.user?.id
       if (!userId) throw new Error('Failed to create user account')
 
-      // 2. Create salon (status=pending)
+      // 2. Create salon (status=pending — requires admin approval)
       const { data: salonData, error: salonErr } = await supabase
         .from('salons')
-        .insert({ name: salonName, email, phone: phone || null, address: address || null, status: 'active', owner_id: userId })
+        .insert({ name: salonName, email, phone: phone || null, address: address || null, status: 'pending', owner_id: userId })
         .select()
         .single()
       if (salonErr) throw salonErr
@@ -56,15 +56,15 @@ export default function Register() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="text-green-500" size={32} />
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="text-yellow-500" size={32} />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">You're registered!</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Registration Received!</h2>
           <p className="text-gray-500 text-sm mb-6">
-            Your salon <strong>{salonName}</strong> has been registered. Check your email to confirm your account, then sign in.
+            Your salon <strong>{salonName}</strong> has been registered and is awaiting approval. You will be notified once your account is approved by an administrator.
           </p>
           <Link to="/login" className="block w-full bg-pink-500 hover:bg-pink-600 text-white font-medium py-2.5 rounded-lg transition-colors text-sm text-center">
-            Go to Sign In
+            Back to Sign In
           </Link>
         </div>
       </div>
